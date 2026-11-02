@@ -1,12 +1,9 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Book, ChevronRight, Award, BookOpen, TrendingUp } from 'lucide-react'
-import logo from '../assets/ielts.png'
-
-const BOOKS = Array.from({ length: 20 }, (_, i) => ({
-  id: i + 1,
-  title: `Practice Book ${i + 1}`,
-  subtitle: `IELTS Academic ${String.fromCharCode(65 + (i % 26))}${String.fromCharCode(65 + ((i + 1) % 26))}`,
-  tests: 4}))
+import { testsApi } from '../utils/api'
+import { LoadingScreen } from '../components/ui'
+import toast from 'react-hot-toast'
 
 const STATS = [
   { icon: Book, label: 'Total Books', value: '20', accent: '#CC0000', bg: '#fff1f1' },
@@ -16,6 +13,27 @@ const STATS = [
 ]
 
 export default function PracticeBookPage() {
+  const [books, setBooks] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const response = await testsApi.listBooks()
+        setBooks(response.data)
+      } catch (error) {
+        toast.error('Failed to load books')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBooks()
+  }, [])
+
+  if (loading) {
+    return <LoadingScreen message="Loading practice books..." />
+  }
+
   return (
     <div
       className="min-h-screen overflow-x-hidden"
@@ -46,13 +64,15 @@ export default function PracticeBookPage() {
                 20 comprehensive books with <span className="font-semibold text-gray-700">80 full IELTS tests</span> to master every module.
               </p>
             </div>
-            <Link
-              to="/book/1"
-              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5  text-sm font-bold transition-all hover:-translate-y-0.5"
-              style={{ background: '#CC0000', color: '#fff' }}
-            >
-              Start with Book 1 <ChevronRight size={15} />
-            </Link>
+            {books.length > 0 && (
+              <Link
+                to={`/book/${books[0].id}`}
+                className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5  text-sm font-bold transition-all hover:-translate-y-0.5"
+                style={{ background: '#CC0000', color: '#fff' }}
+              >
+                Start with Book 1 <ChevronRight size={15} />
+              </Link>
+            )}
           </div>
         </div>
 
@@ -67,7 +87,7 @@ export default function PracticeBookPage() {
                 </span>
               </div>
               <p className="text-2xl sm:text-3xl font-bold text-gray-900 leading-none" style={{  color: accent }}>
-                {value}
+                {label === 'Total Books' ? books.length : value}
               </p>
             </div>
           ))}
@@ -79,10 +99,10 @@ export default function PracticeBookPage() {
             <h2 className="text-sm font-bold text-gray-900" >
               All Practice Books
             </h2>
-            <span className="text-xs text-gray-400 font-medium">{BOOKS.length} books</span>
+            <span className="text-xs text-gray-400 font-medium">{books.length} books</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-            {BOOKS.map((book, idx) => {
+            {books.map((book, idx) => {
             const covers = ['#CC0000', '#B22222', '#A52A2A', '#8B0000', '#DC143C']
             const coverColor = covers[idx % covers.length]
 
@@ -97,6 +117,7 @@ export default function PracticeBookPage() {
                   {/* 3D Shadow */}
                   <div className="absolute -bottom-3 left-2 right-4 h-5 bg-black/25 blur-md" style={{ transform: 'rotateX(4deg)' }} />
                   <div className="absolute -bottom-2 left-4 right-6 h-3 bg-black/10 blur-sm" />
+
 
                   {/* Page block (visible as white edges on right & bottom) */}
                   <div className="relative bg-gradient-to-br from-gray-100 to-gray-50" style={{ minHeight: 200 }}>

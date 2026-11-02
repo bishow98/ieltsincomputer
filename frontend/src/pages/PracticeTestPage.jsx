@@ -1,9 +1,10 @@
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, PlayCircle, Clock, ChevronRight, Book} from 'lucide-react'
-import { useState } from 'react'
-import { sessionsApi } from '../utils/api'
+import { useState, useEffect } from 'react'
+import { sessionsApi, testsApi } from '../utils/api'
 import toast from 'react-hot-toast'
 import { ReadingIcon, ListeningIcon, WritingIcon, SpeakingIcon } from '../components/ExamIcons'
+import { LoadingScreen } from '../components/ui'
 
 const MODULES = [
   { type: 'reading',   icon: ReadingIcon,   label: 'Reading',   time: '60 min', desc: '3 passages · 40 questions',  accent: '#1d4ed8', bg: '#eff6ff' },
@@ -12,20 +13,33 @@ const MODULES = [
   { type: 'speaking',  icon: SpeakingIcon,  label: 'Speaking',  time: '15 min', desc: '3 parts · face-to-face',    accent: '#b45309', bg: '#fffbeb' },
 ]
 
-const TESTS = [1, 2, 3, 4]
-
 export default function PracticeTestPage() {
   const { bookId } = useParams()
   const navigate = useNavigate()
   const [starting, setStarting] = useState(null)
+  const [tests, setTests] = useState([])
+  const [loading, setLoading] = useState(true)
 
   const bookNum = parseInt(bookId, 10) || 1
 
-  const startModule = async (testNum, moduleType) => {
-    const key = `${testNum}-${moduleType}`
+  useEffect(() => {
+    const fetchTests = async () => {
+      try {
+        const response = await testsApi.listTests(bookId)
+        setTests(response.data)
+      } catch (error) {
+        toast.error('Failed to load tests')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTests()
+  }, [bookId])
+
+  const startModule = async (testId, moduleType) => {
+    const key = `${testId}-${moduleType}`
     if (starting) return
     setStarting(key)
-    const testId = `book-${bookNum}-test-${testNum}`
     try {
       await sessionsApi.start({ test_id: testId, section_type: moduleType })
       navigate(`/test/${testId}/${moduleType}`)
@@ -43,7 +57,11 @@ export default function PracticeTestPage() {
   }
 
   const moduleCounts = MODULES.length
-  const totalModules = TESTS.length * moduleCounts
+  const totalModules = tests.length * moduleCounts
+
+  if (loading) {
+    return <LoadingScreen message="Loading practice tests..." />
+  }
 
   return (
     <div
@@ -85,7 +103,7 @@ export default function PracticeTestPage() {
                   Practice Tests
                 </h1>
                 <p className="text-sm text-gray-400 mt-1.5 leading-relaxed">
-                  {TESTS.length} full tests · {MODULES.map(m => m.label).join(', ')} — all at your pace.
+                  {tests.length} full tests · {MODULES.map(m => m.label).join(', ')} — all at your pace.
                 </p>
               </div>
             </div>
@@ -97,6 +115,7 @@ export default function PracticeTestPage() {
             </Link>
           </div>
         </div>
+
 
         {/* ── Module legend ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -115,20 +134,20 @@ export default function PracticeTestPage() {
 
         {/* ── Tests ── */}
         <div className="space-y-4 sm:space-y-5">
-          {TESTS.map((testNum) => (
+          {tests.map((test) => (
             <div
-              key={testNum}
+              key={test.id}
               className="bg-white  border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
               {/* Test header */}
               <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-gray-50">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8  flex items-center justify-center text-sm font-bold" style={{ background: '#fff1f1', color: '#CC0000'}}>
-                    {testNum}
+                    {test.test_number}
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-gray-900" >
-                      Test {testNum}
+                      {test.title}
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {moduleCounts} modules · {
@@ -148,13 +167,13 @@ export default function PracticeTestPage() {
               {/* Module buttons */}
               <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-gray-50">
                 {MODULES.map(({ type, icon: Icon, label, time, desc, accent, bg }) => {
-                  const key = `${testNum}-${type}`
+                  const key = `${test.id}-${type}`
                   const busy = starting === key
 
                   return (
                     <button
                       key={type}
-                      onClick={() => startModule(testNum, type)}
+                      onClick={() => startModule(test.id, type)}
                       disabled={busy}
                       className={`relative flex flex-col p-5 text-left transition-all duration-150 ${
                         busy ? 'cursor-wait' : 'cursor-pointer hover:bg-gray-50 active:scale-[0.98]'

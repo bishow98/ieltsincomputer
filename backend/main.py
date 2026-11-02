@@ -1,9 +1,11 @@
 import logging
 import re
 import os
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -75,3 +77,30 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+@app.get("/seed-massive")
+def seed_massive_endpoint():
+    import traceback
+    try:
+        with open("seed_massive.py", "r") as f:
+            code = f.read()
+        exec(code, globals())
+        seed_massive()
+        return {"status": "seeded_full_content"}
+    except Exception as e:
+        return {"status": "error", "traceback": traceback.format_exc()}
+
+
+@app.get("/test-import")
+def test_import():
+    import traceback
+    try:
+        with open("/home/bishow/.gemini/antigravity-ide/brain/ce0ef029-f0cb-42db-9175-b77f347ced12/scratch/build_seeder.py", "r") as f:
+            code = f.read()
+        exec(code, globals())
+        return {"status": "built_seeder"}
+    except Exception as e:
+        return {"error": traceback.format_exc()}
+
+
